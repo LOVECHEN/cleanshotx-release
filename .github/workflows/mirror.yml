@@ -1,0 +1,49 @@
+name: Mirror CleanShot X
+
+on:
+  schedule:
+    - cron: '47 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      max_per_run:
+        description: 本次最多补齐的版本数量（1-32）
+        default: '8'
+      version:
+        description: 可选，仅同步官网更新日志中的这个版本
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-cleanshotx
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: github.repository == 'LOVECHEN/cleanshotx-release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          ref: main
+      - name: Discover and mirror official installers
+        if: runner.debug != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_CHANGELOG: ${{ secrets.SOURCE_CHANGELOG }}
+          SOURCE_DOWNLOAD_TEMPLATE: ${{ secrets.SOURCE_DOWNLOAD_TEMPLATE }}
+          MAX_PER_RUN: ${{ inputs.max_per_run || '8' }}
+          ONLY_VERSION: ${{ inputs.version || '' }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: exec python3 -I -B scripts/private-runner.py sync
+      - name: Keep schedule active
+        if: always() && runner.debug != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: exec python3 -I -B scripts/private-runner.py keepalive
