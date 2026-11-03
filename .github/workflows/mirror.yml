@@ -47,3 +47,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PYTHONDONTWRITEBYTECODE: '1'
         run: exec python3 -I -B scripts/private-runner.py keepalive
+
+  cleanup:
+    needs: mirror
+    if: always() && github.repository == 'LOVECHEN/cleanshotx-release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          ref: main
+      - name: Prune old completed workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: exec python3 -I -B scripts/cleanup-runs.py
